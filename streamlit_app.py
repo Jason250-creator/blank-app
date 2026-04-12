@@ -19,7 +19,7 @@ if api_key:
         
         # We use 'gemini-1.5-flash' - it's the fastest and most reliable for this
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-pro',
             system_instruction="You are a friendly game host for 10-year-old students. They are trapped in a room with a BED, a DESK, and a RUG. The key is UNDER the rug. If they use a preposition correctly but look in the wrong place, describe what they see. If they find the key, tell them they won! Keep answers to 2 sentences max."
         )
 
