@@ -18,7 +18,7 @@ if api_key:
         
         # This is where the AI "Brain" and "Rules" live
         if "model_name" not in st.session_state:
-           st.session_state.model_name = 'gemini-1.5-flash-8b'
+           st.session_state.model_name = 'models/gemini-1.5-flash'
 
         model = genai.GenerativeModel(
             model_name=st.session_state.model_name,
