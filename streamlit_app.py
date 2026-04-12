@@ -15,7 +15,7 @@ api_key = st.sidebar.text_input("API Key", type="password")
 # 3. The Game Logic
 if api_key:
     genai.configure(api_key=api_key)
-   model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
 
     # Set up the AI's memory and rules
     if "chat_session" not in st.session_state:
