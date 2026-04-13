@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 
+# Page Config
 st.set_page_config(page_title="I Spy: Preposition Edition", layout="wide")
 st.title("📚 I Spy: Teacher's Dashboard")
 st.divider()
@@ -9,7 +10,7 @@ st.divider()
 api_key = st.sidebar.text_input("Teacher API Key", type="password")
 
 # =========================================================
-# PRE-MADE LEVELS (MATCHING YOUR GITHUB SCREENSHOT)
+# PRE-MADE LEVELS (MATCHED TO YOUR GITHUB SCREENSHOT)
 # =========================================================
 PREMADE_LEVELS = {
     "1. BEDROOM": {
@@ -23,7 +24,7 @@ PREMADE_LEVELS = {
     },
     "2. KITCHEN": {
         "Level 2: The Kitchen": {
-            "image_path": "KITCHEN/kitchen1.jpg",
+            "image_path": "KITCHEN/kitchen1.jpg", 
             "room_name": "Kitchen",
             "items_in_room": "a fridge, an oven, and a table",
             "target_item": "The Golden Star",
@@ -32,7 +33,7 @@ PREMADE_LEVELS = {
     },
     "3. PLAYGROUND": {
         "Level 3: The Playground": {
-            "image_path": "PLAYGROUND/playground.jpg",
+            "image_path": "PLAYGROUND/playground.jpg", 
             "room_name": "Playground",
             "items_in_room": "a slide, a swing set, and a sandbox",
             "target_item": "The Golden Star",
@@ -41,15 +42,19 @@ PREMADE_LEVELS = {
     }
 }
 
-# --- DYNAMIC LEVEL STORAGE ---
+# --- INITIALIZE SESSION STATE ---
 if "custom_levels" not in st.session_state:
     st.session_state.custom_levels = []
+if "lvl_idx" not in st.session_state:
+    st.session_state.lvl_idx = 0
+if "won" not in st.session_state:
+    st.session_state.won = False
 
 if api_key:
     genai.configure(api_key=api_key)
     
     try:
-        # Check for available Gemini models
+        # Get Model Name
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         model_name = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
 
@@ -66,15 +71,4 @@ if api_key:
             st.divider()
             
             if setup_method == "A) Visual Gallery (Pre-made)":
-                selected_category = st.selectbox("📂 Choose a Folder:", list(PREMADE_LEVELS.keys()))
-                st.markdown(f"### 🖼️ Images inside {selected_category}")
-                
-                levels_in_category = list(PREMADE_LEVELS[selected_category].items())
-                
-                for i in range(0, len(levels_in_category), 2):
-                    cols = st.columns(2)
-                    for j in range(2):
-                        if i + j < len(levels_in_category):
-                            level_name, level_data = levels_in_category[i+j]
-                            with cols[j]:
-                                st.markdown(f"#### {level_name
+                selected_category = st.selectbox
