@@ -55,8 +55,8 @@ if api_key:
     
     try:
         # Get Model Name
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        model_name = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        model_name = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in models else models[0]
 
         tab1, tab2 = st.tabs(["🎓 Teacher Setup", "🎮 Student Game"])
         
@@ -71,4 +71,18 @@ if api_key:
             st.divider()
             
             if setup_method == "A) Visual Gallery (Pre-made)":
-                selected_category = st.selectbox
+                selected_category = st.selectbox("📂 Choose a Folder:", list(PREMADE_LEVELS.keys()))
+                st.markdown(f"### 🖼️ Images inside {selected_category}")
+                
+                levels_in_category = list(PREMADE_LEVELS[selected_category].items())
+                
+                for i in range(0, len(levels_in_category), 2):
+                    cols = st.columns(2)
+                    for j in range(2):
+                        if i + j < len(levels_in_category):
+                            level_name, level_data = levels_in_category[i+j]
+                            with cols[j]:
+                                st.markdown(f"#### {level_name}")
+                                try:
+                                    st.image(level_data["image_path"], use_container_width=True)
+                                    st.write(f"🎯 **Target:**
