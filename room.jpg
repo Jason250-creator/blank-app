@@ -1,0 +1,60 @@
+import streamlit as st
+import google.generativeai as genai
+
+st.set_page_config(page_title="I Spy: Preposition Edition", layout="wide")
+st.title("🔍 I Spy: The Hidden Key")
+st.write("Look closely at the picture! Can you guess where the Golden Key is hidden?")
+st.divider()
+
+col1, col2 = st.columns([1, 1])
+
+api_key = st.sidebar.text_input("Teacher API Key", type="password")
+
+if api_key:
+    genai.configure(api_key=api_key)
+    
+    # Setup the AI Brain
+    if "chat" not in st.session_state:
+        # We tell the AI EXACTLY what the image looks like
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash',
+            system_instruction="""
+            You are a fun teacher playing a hidden object game with a 10-year-old.
+            The student is looking at a picture of a bedroom. 
+            
+            SECRET IMAGE DETAILS (Do not reveal these unless asked):
+            - There is a large BED in the middle.
+            - There is a DESK with books ON it.
+            - There is a RUG on the floor.
+            - THE GOLDEN KEY IS: **UNDER THE BED**.
+            
+            RULES:
+            1. The student must guess the location using a preposition (in, on, under, etc.).
+            2. If they guess wrong (e.g., "in the desk"), say: "Good guess, but no! I see books on the desk, but no key. Try again!"
+            3. If they guess right ("under the bed"), say: "CORRECT! 🎉 You found the Golden Key hiding under the bed!"
+            4. Keep answers short and encouraging.
+            """
+        )
+        st.session_state.chat = model.start_chat(history=[])
+        st.session_state.messages = [{"role": "ai", "content": "Welcome to the Bedroom! I have hidden a Golden Key somewhere in this room. Where do you want to look?"}]
+
+    # Left Column: The Static Image
+    with col1:
+        st.subheader("The Room")
+        try:
+            # You must upload a picture named 'room.jpg' to your GitHub for this to work!
+            st.image("room.jpg", caption="Where is the key?", use_container_width=True)
+        except:
+            st.warning("⚠️ Teacher: Please upload an image named 'room.jpg' to your GitHub folder!")
+
+    # Right Column: The Chat
+    with col2:
+        st.subheader("Your Guesses")
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(msg["content"])
+
+        if prompt := st.chat_input("I think the key is..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            response = st.session_state.chat.send_message(prompt)
+            st.session_state.messages.append({"role": "ai", "content": response.text})
+            st.rerun() # Refreshes the chat smoothly
