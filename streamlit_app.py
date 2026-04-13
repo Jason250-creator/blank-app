@@ -1,14 +1,44 @@
 import streamlit as st
 import google.generativeai as genai
-import urllib.parse
-import requests
-import random
+import os
 
 st.set_page_config(page_title="I Spy: Preposition Edition", layout="wide")
-st.title("✨ I Spy: The Magic Generator")
+st.title("📚 I Spy: Teacher's Dashboard")
 st.divider()
 
 api_key = st.sidebar.text_input("Teacher API Key", type="password")
+
+# --- CATEGORIZED PRE-MADE LEVELS ---
+# Notice how the image_path now includes the folder name!
+PREMADE_LEVELS = {
+    "1. Bedroom": {
+        "Level 1: On the Rug": {
+            "image_path": "Bedroom/bedroom1.jpg", 
+            "room_name": "Bedroom",
+            "items_in_room": "a bed, a desk, and a rug",
+            "target_item": "The Golden Star",
+            "secret_location": "ON the rug"
+        }
+    },
+    "2. Kitchen": {
+        "Level 2: Under the Table": {
+            "image_path": "Kitchen/kitchen1.jpg",
+            "room_name": "Kitchen",
+            "items_in_room": "a fridge, an oven, and a table",
+            "target_item": "The Golden Star",
+            "secret_location": "UNDER the table"
+        }
+    },
+    "3. Playground": {
+        "Level 3: Behind the Slide": {
+            "image_path": "Playground/playground1.jpg",
+            "room_name": "Playground",
+            "items_in_room": "a slide, a swing set, and a sandbox",
+            "target_item": "The Golden Star",
+            "secret_location": "BEHIND the slide"
+        }
+    }
+}
 
 # --- DYNAMIC LEVEL STORAGE ---
 if "custom_levels" not in st.session_state:
@@ -31,80 +61,81 @@ if api_key:
         if st.session_state.model_name:
             
             # --- CREATE THE TWO TABS ---
-            tab1, tab2 = st.tabs(["🪄 Teacher Setup (Magic AI)", "🎮 Student Game"])
+            tab1, tab2 = st.tabs(["🎓 Teacher Setup", "🎮 Student Game"])
             
             # ==========================================
             # TAB 1: TEACHER SETUP
             # ==========================================
             with tab1:
-                st.header("Step 1: Generate a Custom Level")
-                st.info("Type what you want, and the AI will draw it! Warning: AI sometimes gets prepositions wrong. If the picture doesn't match your rule, just click Generate again!")
+                st.header("Step 1: Add Levels to the Game")
                 
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    t_room = st.text_input("Room Theme", value="A Minecraft bedroom")
-                    t_items = st.text_input("Other items in the room", value="a bed, a desk, a rug")
-                with col_b:
-                    t_target = st.text_input("The Hidden Item", value="A golden star")
-                    t_secret = st.text_input("Where is it hidden?", value="UNDER the table")
+                setup_method = st.radio("Choose how to add a level:", 
+                                        ["A) Use a Pre-made Level (Instant)", "B) Upload a Custom Image"])
                 
-                # MAGIC GENERATE BUTTON
-                if st.button("✨ Generate Magic Image", type="primary"):
-                    if t_room and t_target and t_secret and t_items:
-                        with st.spinner("🎨 AI is drawing your picture. This takes about 5 seconds..."):
-                            # Combine everything into a prompt for the drawing AI
-                            image_prompt = f"{t_room}. It has {t_items}. There is {t_target} exactly {t_secret}."
-                            encoded_prompt = urllib.parse.quote(image_prompt)
-                            
-                            # Add a random seed so it gives a new image every time you click
-                            seed = random.randint(1, 100000)
-                            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?seed={seed}&width=800&height=600&nologo=true"
-                            
-                            try:
-                                response = requests.get(image_url)
-                                if response.status_code == 200:
-                                    st.session_state.temp_image = response.content
-                                    st.session_state.temp_details = {
-                                        "room_name": t_room,
-                                        "items_in_room": t_items,
-                                        "target_item": t_target,
-                                        "secret_location": t_secret
-                                    }
-                                else:
-                                    st.error("Failed to generate image. The drawing servers might be busy!")
-                            except Exception as e:
-                                st.error("Error connecting to image generator.")
-                    else:
-                        st.warning("Please fill out all 4 boxes first!")
-
-                # SHOW THE GENERATED IMAGE AND SAVE IT
-                if "temp_image" in st.session_state:
-                    st.divider()
-                    st.subheader("Does the picture match your rule?")
-                    st.image(st.session_state.temp_image, width=500)
+                st.divider()
+                
+                # OPTION A: PRE-MADE (NOW WITH CATEGORIES)
+                if setup_method == "A) Use a Pre-made Level (Instant)":
                     
-                    col1, col2 = st.columns(2)
+                    # 1. Pick the Folder
+                    selected_category = st.selectbox("📂 Choose a Location Category:", list(PREMADE_LEVELS.keys()))
+                    
+                    # 2. Pick the Level inside that Folder
+                    selected_premade = st.selectbox("🖼️ Choose a Level Template:", list(PREMADE_LEVELS[selected_category].keys()))
+                    
+                    level_data = PREMADE_LEVELS[selected_category][selected_premade]
+                    
+                    col1, col2 = st.columns([1, 1])
                     with col1:
-                        if st.button("💾 Yes! Save Level to Game"):
-                            new_level = {
-                                "level": len(st.session_state.custom_levels) + 1,
-                                "image_bytes": st.session_state.temp_image,
-                                "room_name": st.session_state.temp_details["room_name"],
-                                "target_item": st.session_state.temp_details["target_item"],
-                                "secret_location": st.session_state.temp_details["secret_location"],
-                                "items_in_room": st.session_state.temp_details["items_in_room"]
-                            }
-                            st.session_state.custom_levels.append(new_level)
-                            del st.session_state.temp_image
-                            del st.session_state.temp_details
-                            st.rerun()
+                        try:
+                            st.image(level_data["image_path"], width=300)
+                        except:
+                            st.warning(f"⚠️ Please make sure '{level_data['image_path']}' is uploaded to your GitHub repository.")
                     with col2:
-                        st.markdown("*(If it looks wrong, just scroll up and click Generate again!)*")
+                        st.write(f"**Room:** {level_data['room_name']}")
+                        st.write(f"**Target:** {level_data['target_item']}")
+                        st.write(f"**Answer:** {level_data['secret_location']}")
+                        
+                        if st.button("💾 Add Pre-made Level to Game"):
+                            new_level = level_data.copy()
+                            new_level["level"] = len(st.session_state.custom_levels) + 1
+                            st.session_state.custom_levels.append(new_level)
+                            st.success("✅ Level added! You can add another or go to the Student Game tab.")
 
+                # OPTION B: CUSTOM UPLOAD
+                elif setup_method == "B) Upload a Custom Image":
+                    uploaded_image = st.file_uploader("Upload Room Picture (JPG/PNG)", type=["jpg", "jpeg", "png"])
+                    
+                    if uploaded_image:
+                        st.image(uploaded_image, width=300)
+                        
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            t_room = st.text_input("Room Name (e.g., Garden)")
+                            t_items = st.text_input("Items visible (e.g., tree, bench)")
+                        with col_b:
+                            t_target = st.text_input("Hidden Item (e.g., The Golden Star)")
+                            t_secret = st.text_input("Where is it? (e.g., BEHIND the tree)")
+                        
+                        if st.button("💾 Save Custom Level to Game"):
+                            if t_room and t_target and t_secret:
+                                new_level = {
+                                    "level": len(st.session_state.custom_levels) + 1,
+                                    "image_bytes": uploaded_image.getvalue(),
+                                    "room_name": t_room,
+                                    "target_item": t_target,
+                                    "secret_location": t_secret,
+                                    "items_in_room": t_items
+                                }
+                                st.session_state.custom_levels.append(new_level)
+                                st.success("✅ Custom Level added! You can add another or go to the Student Game tab.")
+                            else:
+                                st.warning("Please fill out all the text boxes before saving.")
+                                
                 # SHOW SAVED LEVELS
                 if len(st.session_state.custom_levels) > 0:
                     st.divider()
-                    st.success(f"🎉 Current Levels Ready to Play: {len(st.session_state.custom_levels)}")
+                    st.subheader(f"Current Levels Queued: {len(st.session_state.custom_levels)}")
                     if st.button("🗑️ Clear All Levels"):
                         st.session_state.custom_levels = []
                         st.rerun()
@@ -114,7 +145,7 @@ if api_key:
             # ==========================================
             with tab2:
                 if len(st.session_state.custom_levels) == 0:
-                    st.warning("⚠️ Waiting for the teacher to set up a level in the Teacher Dashboard!")
+                    st.info("👋 Welcome! Ask the teacher to set up a level in the Teacher Setup tab first.")
                 else:
                     game_col1, game_col2 = st.columns([1, 1])
                     
@@ -138,7 +169,7 @@ if api_key:
                         - THE HIDDEN ITEM IS: **{current_level_data['secret_location']}**.
                         
                         RULES:
-                        1. The student must guess the location of the {current_level_data['target_item']} using a preposition.
+                        1. The student must guess the location of {current_level_data['target_item']} using a preposition.
                         2. If wrong, say: "Sorry, try again! 💡 Tip: " and give a small hint.
                         3. If right, you MUST say exactly: "CORRECT! 🎉 You found it!" 
                         4. Keep your answers to 1 or 2 short sentences.
@@ -149,13 +180,20 @@ if api_key:
                             system_instruction=system_rules
                         )
                         st.session_state.chat = model.start_chat(history=[])
-                        st.session_state.messages = [{"role": "ai", "content": f"Welcome to Level {current_level_data['level']}! Can you find the {current_level_data['target_item']}? Where is it?"}]
+                        st.session_state.messages = [{"role": "ai", "content": f"Welcome to Level {current_level_data['level']}! Can you find {current_level_data['target_item']}? Where is it?"}]
                         st.session_state.last_level = st.session_state.current_level_index
                         st.session_state.won_level = False
 
                     with game_col1:
                         st.subheader(f"Level {current_level_data['level']}: {current_level_data['room_name']}")
-                        st.image(current_level_data['image_bytes'], use_container_width=True)
+                        
+                        try:
+                            if "image_bytes" in current_level_data:
+                                st.image(current_level_data['image_bytes'], use_container_width=True)
+                            else:
+                                st.image(current_level_data['image_path'], use_container_width=True)
+                        except:
+                            st.warning("⚠️ Image could not be loaded. Please ensure it is uploaded to the correct folder in GitHub.")
                             
                         if st.session_state.won_level:
                             if st.session_state.current_level_index < len(st.session_state.custom_levels) - 1:
