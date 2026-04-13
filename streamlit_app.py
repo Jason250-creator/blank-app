@@ -37,13 +37,21 @@ else:
         with t1:
             st.subheader("Add a Level to the Lesson")
             
-            # The 3 Teacher Options
-            method = st.radio("Choose an option:", [
-                "A) Use Pre-made Gallery", 
-                "B) Upload a Picture", 
-                "C) Generate with AI"
-            ])
+            # Shortened options to prevent copy-paste line breaks!
+            method = st.radio("Choose:", ["Gallery", "Upload", "AI"])
             st.divider()
 
-            # Option A: Gallery
-            if method == "A) Use Pre-
+            if method == "Gallery":
+                folder = st.selectbox("Select Folder", list(PREMADE.keys()))
+                data = PREMADE[folder]
+                st.image(data["path"], width=250)
+                if st.button("Add Gallery Level"):
+                    st.session_state.queue.append(data)
+                    st.success(f"{folder} added to the game!")
+
+            elif method == "Upload":
+                uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
+                t_item = st.text_input("Hidden item (e.g., The red apple)")
+                t_ans = st.text_input("Secret Answer (e.g., ON the table)")
+                
+                if st.button("
