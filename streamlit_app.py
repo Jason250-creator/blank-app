@@ -1,155 +1,147 @@
 import streamlit as st
 import google.generativeai as genai
+import urllib.parse
+import requests
+import random
 
 # --- Page Config ---
-st.set_page_config(page_title="I Spy Game", layout="wide")
-st.title("📚 I Spy: Teacher's Dashboard")
+st.set_page_config(page_title="I Spy: Preposition Edition", layout="wide")
+st.title("✨ I Spy: The Teacher's Dashboard")
+st.divider()
 
-# --- API Key Sidebar ---
 api_key = st.sidebar.text_input("Teacher API Key", type="password")
 
-# --- Game Levels (Must match GitHub folders) ---
+# --- Game Levels Data (Gallery Fallbacks) ---
 PREMADE = {
-    "BEDROOM": {"path": "BEDROOM/bedroom.jpg", "target": "The Golden Star", "ans": "ON the bed"},
-    "KITCHEN": {"path": "KITCHEN/kitchen1.jpg", "target": "The Golden Star", "ans": "UNDER the table"},
-    "PLAYGROUND": {"path": "PLAYGROUND/playground.jpg", "target": "The Golden Star", "ans": "BEHIND the slide"}
+    "BEDROOM": {"path": "BEDROOM/bedroom.jpg", "target": "The Golden Star", "ans": "ON the bed", "items": "a bed, a desk, a rug"},
+    "KITCHEN": {"path": "KITCHEN/kitchen1.jpg", "target": "The Golden Star", "ans": "UNDER the table", "items": "a table, a fridge, chairs"},
+    "PLAYGROUND": {"path": "PLAYGROUND/playground.jpg", "target": "The Golden Star", "ans": "BEHIND the slide", "items": "a slide, a swing, a sandbox"}
 }
 
 # --- State Management ---
-if "queue" not in st.session_state: st.session_state.queue = []
-if "idx" not in st.session_state: st.session_state.idx = 0
-if "won" not in st.session_state: st.session_state.won = False
+if "custom_levels" not in st.session_state:
+    st.session_state.custom_levels = []
 
 if not api_key:
     st.warning("Please enter your API Key in the sidebar.")
 else:
     genai.configure(api_key=api_key)
     try:
+        # --- THE MODEL SCANNER ---
         if "model_name" not in st.session_state:
-            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            st.session_state.model_name = next((m for m in models if "flash" in m), models[0])
-        
-        t1, t2 = st.tabs(["🎓 Setup", "🎮 Play"])
-
-        # ==========================================
-        # TEACHER SETUP TAB
-        # ==========================================
-        with t1:
-            st.subheader("Add a Level to the Lesson")
-            
-            # Shortened options to prevent copy-paste line breaks!
-            method = st.radio("Choose:", ["Gallery", "Upload", "AI"])
-            st.divider()
-
-            if method == "Gallery":
-                folder = st.selectbox("Select Folder", list(PREMADE.keys()))
-                data = PREMADE[folder]
-                st.image(data["path"], width=250)
-                if st.button("Add Gallery Level"):
-                    st.session_state.queue.append(data)
-                    st.success(f"{folder} added to the game!")
-
-            elif method == "Upload":
-                uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
-                t_item = st.text_input("Hidden item (e.g., The red apple)")
-                t_ans = st.text_input("Secret Answer (e.g., ON the table)")
-                
-                if st.button("Add Uploaded Level"):
-                    if uploaded_file and t_item and t_ans:
-                        st.session_state.queue.append({
-                            "img_data": uploaded_file.getvalue(), 
-                            "target": t_item, 
-                            "ans": t_ans
-                        })
-                        st.success("Uploaded level added!")
-                    else:
-                        st.warning("Please upload a picture and fill out both text boxes.")
-
-            elif method == "AI":
-                st.info("Tell the AI what to draw! (Note: AI might not place items perfectly).")
-                ai_prompt = st.text_area("Room:", "A cartoon classroom with a green apple on the desk.")
-                ai_item = st.text_input("Student must find:", "The green apple")
-                ai_ans = st.text_input("Secret Answer:", "ON the desk")
-                
-                if st.button("Draw Image & Add Level"):
-                    if ai_prompt and ai_item and ai_ans:
-                        with st.spinner("AI is painting... please wait..."):
-                            try:
-                                img_model = genai.ImageGenerationModel("imagen-3.0-generate-001")
-                                result = img_model.generate_images(prompt=ai_prompt, number_of_images=1)
-                                generated_img = result.images[0]._pil_image
-                                st.session_state.queue.append({
-                                    "img_data": generated_img, 
-                                    "target": ai_item, 
-                                    "ans": ai_ans
-                                })
-                                st.image(generated_img, width=300)
-                                st.success("Masterpiece added!")
-                            except AttributeError:
-                                st.error("System Note: Image library missing. Please use Gallery or Uploads.")
-                            except Exception as e:
-                                st.error(f"Generation failed: {e}")
-                    else:
-                        st.warning("Fill out all boxes first.")
-
-            if st.session_state.queue:
-                st.divider()
-                st.write(f"**Levels in Queue: {len(st.session_state.queue)}**")
-                if st.button("🗑️ Reset All Levels"):
-                    st.session_state.queue = []
-                    st.session_state.idx = 0
-                    st.rerun()
-
-        # ==========================================
-        # STUDENT PLAY TAB
-        # ==========================================
-        with t2:
-            if not st.session_state.queue:
-                st.info("Teacher: Add a level first!")
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if 'models/gemini-1.5-flash' in available_models:
+                st.session_state.model_name = 'models/gemini-1.5-flash'
+            elif 'models/gemini-pro' in available_models:
+                st.session_state.model_name = 'models/gemini-pro'
             else:
-                idx = st.session_state.idx
-                if idx >= len(st.session_state.queue): idx = 0
-                lvl = st.session_state.queue[idx]
+                st.session_state.model_name = available_models[0] if available_models else None
 
-                if "chat" not in st.session_state or st.session_state.get("last_lvl") != idx:
-                    instruction = (
-                        f"ROLE: You are a friendly teacher playing I Spy. "
-                        f"OBJECT: {lvl['target']}. ANSWER: {lvl['ans']}. "
-                        f"RULE 1: If correct, say 'CORRECT! 🎉'. RULE 2: If wrong, give a hint."
-                    )
-                    model = genai.GenerativeModel(model_name=st.session_state.model_name, system_instruction=instruction)
-                    st.session_state.chat = model.start_chat(history=[])
-                    st.session_state.history = [{"role": "ai", "content": f"I spy... {lvl['target']}! Where is it?"}]
-                    st.session_state.last_lvl = idx
-                    st.session_state.won = False
+        if st.session_state.model_name:
+            
+            # --- CREATE THE TWO TABS ---
+            tab1, tab2 = st.tabs(["🪄 Teacher Setup", "🎮 Student Game"])
+            
+            # ==========================================
+            # TAB 1: TEACHER SETUP
+            # ==========================================
+            with tab1:
+                st.header("Step 1: Add a Level")
+                method = st.radio("Choose a method:", ["Gallery", "Upload", "Magic AI ✨"])
+                st.divider()
 
-                c1, c2 = st.columns([1, 1])
-                with c1:
-                    display_img = lvl.get("img_data") or lvl["path"]
-                    st.image(display_img, use_container_width=True)
+                # -------------------------
+                # OPTION A: GALLERY
+                # -------------------------
+                if method == "Gallery":
+                    folder = st.selectbox("Select Folder", list(PREMADE.keys()))
+                    data = PREMADE[folder]
+                    st.image(data["path"], width=300)
+                    if st.button("💾 Add Gallery Level to Game"):
+                        st.session_state.custom_levels.append({
+                            "level": len(st.session_state.custom_levels) + 1,
+                            "image_data": data["path"], # Path works fine for Streamlit
+                            "room_name": folder,
+                            "target_item": data["target"],
+                            "secret_location": data["ans"],
+                            "items_in_room": data["items"]
+                        })
+                        st.success(f"{folder} added!")
+
+                # -------------------------
+                # OPTION B: UPLOAD
+                # -------------------------
+                elif method == "Upload":
+                    uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
+                    col_u1, col_u2 = st.columns(2)
+                    with col_u1:
+                        u_room = st.text_input("Room Name (e.g. My Classroom)")
+                        u_items = st.text_input("Items visible (e.g. desks, whiteboard)")
+                    with col_u2:
+                        u_target = st.text_input("Hidden item (e.g. The red apple)")
+                        u_secret = st.text_input("Secret Answer (e.g. ON the desk)")
                     
-                    if st.session_state.won and idx < len(st.session_state.queue) - 1:
-                        if st.button("Next Level ➡️"):
-                            st.session_state.idx += 1
-                            st.session_state.won = False
-                            st.rerun()
-                            
-                with c2:
-                    for m in st.session_state.history:
-                        st.chat_message(m["role"]).write(m["content"])
-                    if not st.session_state.won:
-                        if p := st.chat_input("Answer here...", key=f"chat_{idx}"):
-                            st.session_state.history.append({"role": "user", "content": p})
-                            try:
-                                response = st.session_state.chat.send_message(p).text
-                                st.session_state.history.append({"role": "ai", "content": response})
-                                if "CORRECT" in response.upper(): st.session_state.won = True
-                                st.rerun()
-                            except Exception as e:
-                                if "429" in str(e):
-                                    st.error("Wait 30 seconds before typing! The API is taking a quick break.")
-                                else:
-                                    st.error(f"Chat Error: {e}")
-                            
-    except Exception as e:
-        st.error(f"System Error: {e}")
+                    if st.button("💾 Add Uploaded Level to Game"):
+                        if uploaded_file and u_room and u_items and u_target and u_secret:
+                            st.session_state.custom_levels.append({
+                                "level": len(st.session_state.custom_levels) + 1,
+                                "image_data": uploaded_file.getvalue(), # Raw bytes
+                                "room_name": u_room,
+                                "target_item": u_target,
+                                "secret_location": u_secret,
+                                "items_in_room": u_items
+                            })
+                            st.success("Uploaded level added!")
+                        else:
+                            st.warning("Please upload a picture and fill out all boxes.")
+
+                # -------------------------
+                # OPTION C: MAGIC AI (Your Custom Code)
+                # -------------------------
+                elif method == "Magic AI ✨":
+                    st.info("Type what you want, and the AI will draw it! Warning: AI sometimes gets prepositions wrong. If the picture doesn't match your rule, just click Generate again!")
+                    
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        t_room = st.text_input("Room Theme", value="A Minecraft bedroom")
+                        t_items = st.text_input("Other items in the room", value="a bed, a desk, a rug")
+                    with col_b:
+                        t_target = st.text_input("The Hidden Item", value="A golden star")
+                        t_secret = st.text_input("Where is it hidden?", value="UNDER the table")
+                    
+                    if st.button("✨ Generate Magic Image", type="primary"):
+                        if t_room and t_target and t_secret and t_items:
+                            with st.spinner("🎨 AI is drawing your picture. This takes about 5 seconds..."):
+                                image_prompt = f"{t_room}. It has {t_items}. There is {t_target} exactly {t_secret}."
+                                encoded_prompt = urllib.parse.quote(image_prompt)
+                                seed = random.randint(1, 100000)
+                                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?seed={seed}&width=800&height=600&nologo=true"
+                                
+                                try:
+                                    response = requests.get(image_url)
+                                    if response.status_code == 200:
+                                        st.session_state.temp_image = response.content
+                                        st.session_state.temp_details = {
+                                            "room_name": t_room,
+                                            "items_in_room": t_items,
+                                            "target_item": t_target,
+                                            "secret_location": t_secret
+                                        }
+                                    else:
+                                        st.error("Failed to generate image. The drawing servers might be busy!")
+                                except Exception as e:
+                                    st.error("Error connecting to image generator.")
+                        else:
+                            st.warning("Please fill out all 4 boxes first!")
+
+                    # SHOW THE GENERATED IMAGE PREVIEW AND SAVE IT
+                    if "temp_image" in st.session_state:
+                        st.divider()
+                        st.subheader("Does the picture match your rule?")
+                        st.image(st.session_state.temp_image, width=500)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("💾 Yes! Save Level to Game"):
+                                new_level = {
+                                    "level": len(st.session_state.custom_levels) + 1
