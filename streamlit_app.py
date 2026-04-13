@@ -13,9 +13,9 @@ api_key = st.sidebar.text_input("Teacher API Key", type="password")
 
 # --- Game Levels Data (Gallery Fallbacks) ---
 PREMADE = {
-    "BEDROOM": {"path": "BEDROOM/bedroom.jpg", "target": "The Golden Star", "ans": "ON the bed", "items": "a bed, a desk, a rug"},
+    "BEDROOM": {"path": "BEDROOM/bedroom.jpg", "target": "The Golden Star", "ans": "UNDER the table", "items": "a bed, a desk, a rug"},
     "KITCHEN": {"path": "KITCHEN/kitchen1.jpg", "target": "The Golden Star", "ans": "UNDER the table", "items": "a table, a fridge, chairs"},
-    "PLAYGROUND": {"path": "PLAYGROUND/playground.jpg", "target": "The Golden Star", "ans": "BEHIND the slide", "items": "a slide, a swing, a sandbox"}
+    "PLAYGROUND": {"path": "PLAYGROUND/playground.jpg", "target": "The Golden Star", "ans": "BETWEEN Them", "items": "a slide, a swing, a sandbox"}
 }
 
 # --- State Management ---
