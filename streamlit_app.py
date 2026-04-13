@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-from io import BytesIO
 
 # --- Page Config ---
 st.set_page_config(page_title="I Spy Game", layout="wide")
@@ -38,8 +37,8 @@ else:
         with t1:
             st.subheader("Add a Level to the Lesson")
             
-            # The 3 Teacher Options
-            method = st.radio("Choose an option:", ["A) Use Pre-made Gallery", "B) Upload a Picture", "C) Generate with AI 🪄"])
+            # The 2 Teacher Options
+            method = st.radio("Choose an option:", ["A) Use Pre-made Gallery", "B) Upload a Picture"])
             st.divider()
 
             # Option A: Gallery
@@ -67,35 +66,6 @@ else:
                         st.success("Uploaded level added!")
                     else:
                         st.warning("Please upload a picture and fill out both text boxes.")
-
-            # Option C: AI Image Generator
-            elif method == "C) Generate with AI 🪄":
-                st.info("🎨 Tell the AI what kind of room to draw. It takes about 10 seconds!")
-                ai_prompt = st.text_area("Describe the room:", "A cartoon classroom with a green apple sitting on the teacher's desk.")
-                ai_item = st.text_input("What should the student find?", "The green apple")
-                ai_ans = st.text_input("Secret Answer (Where is it?)", "ON the desk")
-                
-                if st.button("Draw Image & Add Level"):
-                    if ai_prompt and ai_item and ai_ans:
-                        with st.spinner("AI is painting your room... please wait..."):
-                            try:
-                                # Call Google's Imagen model
-                                img_model = genai.ImageGenerationModel("imagen-3.0-generate-001")
-                                result = img_model.generate_images(prompt=ai_prompt, number_of_images=1)
-                                
-                                # Extract the image and save it to the game queue
-                                generated_img = result.images[0]._pil_image
-                                st.session_state.queue.append({
-                                    "img_data": generated_img, 
-                                    "target": ai_item, 
-                                    "ans": ai_ans
-                                })
-                                st.image(generated_img, width=300)
-                                st.success("Masterpiece created and added to the game!")
-                            except Exception as e:
-                                st.error(f"Image generation failed. (Note: Some free API keys do not have Imagen access enabled yet). Error details: {e}")
-                    else:
-                        st.warning("Please fill out all the text boxes first.")
 
             # Reset Button
             if st.session_state.queue:
@@ -131,7 +101,7 @@ else:
 
                 c1, c2 = st.columns([1, 1])
                 with c1:
-                    # Dynamically check if the image is a file path, uploaded bytes, or an AI PIL image
+                    # Dynamically check if the image is a file path or uploaded bytes
                     display_img = lvl.get("img_data") or lvl["path"]
                     st.image(display_img, use_container_width=True)
                     
